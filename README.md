@@ -14,11 +14,15 @@
 
 - Python 3.10+
 - 系统已安装 Edge 或 Chrome 浏览器
-
+## Clone
+```bash
+git clone https://github.com/HXBJ1737/attendance.git
+```
 ## 安装
 
 ```bash
-pip install -r requirements.txt
+uv venv
+uv pip install -r requirements.txt
 ```
 
 ## 使用
@@ -32,7 +36,7 @@ python main.py
 ### 打包为exe
 
 ```bash
-build.bat
+./build.bat
 ```
 
 打包后在 `dist/` 目录生成 `AttendanceScraper.exe`。
