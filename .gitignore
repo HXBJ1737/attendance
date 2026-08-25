@@ -1,0 +1,7 @@
+.venv/
+build/
+dist/
+browser_data/
+*.spec
+*.log
+__pycache__/
