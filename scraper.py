@@ -203,19 +203,27 @@ def run_scrape(config, progress=None):
                 calc_overtime(r[2], r[3], r[0], work_end_time)
                 for r in all_results if r[2] and r[3]
             )
+            weekend_overtime_min = sum(
+                calc_overtime(r[2], r[3], r[0], work_end_time)
+                for r in all_results if r[2] and r[3] and not is_workday(r[0])
+            )
             workday_count = sum(1 for r in all_results if is_workday(r[0]))
             unchecked_days = int(config.get('unchecked_days', '0') or 0)
             denominator = (unchecked_days + workday_count) * 4 * 60
             percent = total_overtime_min / denominator * 100 if denominator > 0 else 0
 
-            return (
-                f'数据已覆盖查询范围，无需登录\n'
-                f'共 {len(all_results)} 条记录\n'
-                f'总加班: {fmt_hours(total_overtime_min)}\n'
-                f'满额加班: {fmt_hours(denominator)}\n'
-                f'加班时长百分比: {percent:.2f}%\n'
-                f'已保存到: {csv_file}'
-            )
+            return {
+                'record_count': len(all_results),
+                'total_overtime_hours': total_overtime_min / 60,
+                'total_overtime_str': fmt_hours(total_overtime_min),
+                'full_overtime_hours': denominator / 60,
+                'full_overtime_str': fmt_hours(denominator),
+                'percent': percent,
+                'workday_count': workday_count,
+                'unchecked_days': unchecked_days,
+                'weekend_overtime_hours': weekend_overtime_min / 60,
+                'csv_file': csv_file,
+            }
 
     # 情况2：需要爬取缺失日期
     # 计算需要爬取的日期范围：查询范围 - CSV已有范围
@@ -367,6 +375,10 @@ def run_scrape(config, progress=None):
                 calc_overtime(r[2], r[3], r[0], work_end_time)
                 for r in all_results if r[2] and r[3]
             )
+            weekend_overtime_min = sum(
+                calc_overtime(r[2], r[3], r[0], work_end_time)
+                for r in all_results if r[2] and r[3] and not is_workday(r[0])
+            )
             workday_count = sum(1 for r in all_results if is_workday(r[0]))
             unchecked_days = int(config.get('unchecked_days', '0') or 0)
             denominator = (unchecked_days + workday_count) * 4 * 60
@@ -383,13 +395,19 @@ def run_scrape(config, progress=None):
                         ot_str = fmt_hours(ot_min)
                         writer.writerow([date_str, rec[1], rec[2], rec[3], ot_str])
 
-            return (
-                f'完成！共 {len(all_results)} 条记录（新增 {len(new_records)} 条）\n'
-                f'总加班: {fmt_hours(total_overtime_min)}\n'
-                f'满额加班: {fmt_hours(denominator)}\n'
-                f'加班时长百分比: {percent:.2f}%\n'
-                f'已保存到: {csv_file}'
-            )
+            return {
+                'record_count': len(all_results),
+                'new_count': len(new_records),
+                'total_overtime_hours': total_overtime_min / 60,
+                'total_overtime_str': fmt_hours(total_overtime_min),
+                'full_overtime_hours': denominator / 60,
+                'full_overtime_str': fmt_hours(denominator),
+                'percent': percent,
+                'workday_count': workday_count,
+                'unchecked_days': unchecked_days,
+                'weekend_overtime_hours': weekend_overtime_min / 60,
+                'csv_file': csv_file,
+            }
 
         finally:
             browser.close()

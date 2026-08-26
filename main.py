@@ -43,10 +43,98 @@ def save_config(cfg):
     with open(path, 'w', encoding='utf-8') as f:
         json.dump(cfg, f, indent=4, ensure_ascii=False)
 
+class OvertimeCalcWindow:
+    """加班百分比计算器窗口"""
+    def __init__(self, parent, p=0, q=116, y=0, weekend=0):
+        self.window = tk.Toplevel(parent)
+        self.window.title('加班时长百分比计算器')
+        self.window.geometry('500x480')
+        self.window.resizable(True, True)
+
+        self.build_ui(p, q, y, weekend)
+
+    def build_ui(self, p, q, y, weekend):
+        input_frame = ttk.LabelFrame(self.window, text='参数设置', padding=10)
+        input_frame.pack(padx=15, pady=10, fill='x')
+
+        params = [
+            ('p', 'p (已加班时长/小时):', str(p)),
+            ('q', 'q (满加班时长/小时):', str(q)),
+            ('y', 'y (未来加班天数):', '1'),
+            ('weekend', 'weekend (未来周末加班总时长/小时):', '0'),
+            ('base_time', '加班起算时间:', '17:20'),
+            ('h步长', 'h步长 (每次递增/小时):', '0.5'),
+            ('循环次数', '循环次数:', '11'),
+        ]
+
+        self.entries = {}
+        for i, (key, label, default) in enumerate(params):
+            ttk.Label(input_frame, text=label).grid(row=i, column=0, sticky='e', padx=5, pady=3)
+            entry = ttk.Entry(input_frame, width=20)
+            entry.insert(0, default)
+            entry.grid(row=i, column=1, padx=5, pady=3)
+            self.entries[key] = entry
+
+        btn_frame = ttk.Frame(self.window)
+        btn_frame.pack(pady=5)
+        ttk.Button(btn_frame, text='计算', command=self.calculate).pack(side='left', padx=10)
+
+        result_frame = ttk.LabelFrame(self.window, text='计算结果', padding=10)
+        result_frame.pack(padx=15, pady=5, fill='both', expand=True)
+
+        self.result_text = tk.Text(result_frame, height=12, font=('Consolas', 10))
+        scrollbar = ttk.Scrollbar(result_frame, orient='vertical', command=self.result_text.yview)
+        self.result_text.configure(yscrollcommand=scrollbar.set)
+        self.result_text.pack(side='left', fill='both', expand=True)
+        scrollbar.pack(side='right', fill='y')
+
+    def calculate(self):
+        try:
+            p = float(self.entries['p'].get())
+            q = float(self.entries['q'].get())
+            y = float(self.entries['y'].get())
+            weekend = float(self.entries['weekend'].get())
+            base_time = self.entries['base_time'].get().strip()
+            step = float(self.entries['h步长'].get())
+            count = int(self.entries['循环次数'].get())
+
+            from datetime import datetime, timedelta
+            base_dt = datetime.strptime(base_time, '%H:%M')
+        except ValueError:
+            messagebox.showerror('错误', '请输入有效的数字或时间(HH:MM)')
+            return
+
+        self.result_text.delete('1.0', tk.END)
+
+        header = f'{"每天加班":>10} {"加班到":>10} {"百分比":>10}'
+        self.result_text.insert(tk.END, header + '\n')
+        self.result_text.insert(tk.END, '-' * 40 + '\n')
+
+        h = 0
+        print(f'计算参数: p={p}, q={q}, y={y}, weekend={weekend}, base_time={base_time}, step={step}, count={count}\n')
+        for i in range(count):
+            if (q + y * h) != 0:
+                x = (p + y * h + weekend) / (q + y * 4) * 100
+                # print(f'计算第{i+1}次: h={h}, p={p}, q={q}, y={y}, weekend={weekend}, 百分比={x:.2f}%')
+            else:
+                x = 0
+
+            leave_dt = base_dt + timedelta(hours=h)
+            leave_str = leave_dt.strftime('%H:%M')
+
+            line = f'{h:>10.1f} {leave_str:>10} {x:>10.2f}%'
+            self.result_text.insert(tk.END, line + '\n')
+            h += step
+
+        self.result_text.insert(tk.END, '-' * 40 + '\n')
+        self.result_text.insert(tk.END, f'\n已加班: {p}小时, 满额: {q}小时\n')
+        self.result_text.insert(tk.END, f'连续天数: {int(y)}, 周末加班: {weekend}小时\n')
+        self.result_text.insert(tk.END, f'步长: 每次+{step}小时, 共{count}次\n')
+
 class AttendanceApp:
     def __init__(self, root):
         self.root = root
-        self.root.title('考勤打卡记录爬取工具(已考虑调休工作日和周末)')
+        self.root.title('考勤打卡记录爬取工具')
         self.root.geometry('480x380')
         self.root.resizable(False, False)
 
@@ -122,7 +210,26 @@ class AttendanceApp:
     def on_done(self, result):
         self.run_btn.config(state='normal')
         self.status_var.set('完成')
-        messagebox.showinfo('完成', result)
+
+        # 解析结果，提取参数
+        p = result.get('total_overtime_hours', 0)
+        q = result.get('full_overtime_hours', 116)
+        y = result.get('workday_count', 0)
+        weekend = result.get('weekend_overtime_hours', 0)
+        unchecked_days = result.get('unchecked_days', 0)
+
+        # 显示结果摘要
+        summary = (
+            f"共 {result.get('record_count', 0)} 条记录\n"
+            f"总加班: {result.get('total_overtime_str', '')}\n"
+            f"满额加班: {result.get('full_overtime_str', '')}\n"
+            f"加班时长百分比: {result.get('percent', 0):.2f}%\n"
+            f"已保存到: {result.get('csv_file', '')}"
+        )
+        messagebox.showinfo('完成', summary)
+
+        # 打开计算器，自动填充参数
+        OvertimeCalcWindow(self.root, p=p, q=q, y=y, weekend=weekend)
 
     def on_error(self, msg):
         self.run_btn.config(state='normal')

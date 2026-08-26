@@ -2,7 +2,7 @@
     "username": "0000",
     "password": "000000",
     "start_date": "2026-07-07",
-    "end_date": "2026-08-20",
+    "end_date": "2026-08-24",
     "work_end_time": "17:20",
     "login_url": "https://192.168.36.67/eassso/login?service=http%3A%2F%2F192.168.36.67%3A80%2Fshr%2Fdynamic.do%3Fuipk%3Dcom.kingdee.eas.hr.ats.app.WorkCalendarItem.listSelf%26inFrame%3Dtrue%26fromHeader%3Dtrue%26serviceId%3DqBEWMTx%252FSFqo38ksWGkgPfI9KRA%253D",
     "unchecked_days": "1"
